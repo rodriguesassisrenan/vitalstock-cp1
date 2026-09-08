@@ -1,4 +1,4 @@
-# Gestor de Estoque API
+# VitalStock API
 
 ## Descrição
 Esta é a entrega do Checkpoint 1 (CP1). Trata-se de uma API REST desenvolvida em Python (FastAPI) para controle e gestão inteligente de insumos hospitalares. O sistema ("VitalStock") permite o cadastro de categorias e medicamentos, registrando movimentações em tempo real e garantindo a segurança operacional do hospital.
@@ -27,7 +27,9 @@ O **VitalStock** atua como uma API blindada que garante a integridade dos dados 
 - **Movimentacao:** Registro de alteração de saldo. Atributos: `id`, `produto_id` (FK), `tipo` ('entrada' ou 'saida'), `quantidade`, `data_hora`.
 
 ## Integrantes do Grupo
-- [NOME DOS INTEGRANTES]
+ Gustavo Lino (RM-574157)
+ Renan de A. Rodrigues (RM-574049)
+ Lucas Lopes Arias (RM-570875)
 
 ## Tecnologias Utilizadas e Arquitetura Inicial
 - **Backend:** Python 3.10+, FastAPI, Uvicorn
@@ -49,8 +51,8 @@ Para este CP1, **não há variáveis de ambiente sensíveis ou arquivos `.env` n
 ## Instruções de Instalação e Execução
 1. **Clone o repositório:**
 ```bash
-git clone https://github.com/[SEU_USUARIO]/[NOME_DO_REPOSITORIO].git
-cd [NOME_DO_REPOSITORIO]
+git clone https://github.com/rodriguesassisrenan/vitalstock-cp1.git
+cd vitalstock-cp1
 ```
 2. **(Opcional) Crie e ative um ambiente virtual:**
 ```bash
@@ -83,4 +85,4 @@ A documentação interativa e completa (Swagger UI) é gerada automaticamente pe
 **[http://localhost:8000/docs](http://localhost:8000/docs)**
 
 ## Link do Trello/Notion
-[LINK DO TRELLO]
+
