@@ -16,10 +16,10 @@ O **VitalStock** atua como uma API blindada que garante a integridade dos dados 
 - Registro de Movimentações (entrada e saída).
 - Endpoint para Relatório de Alertas (Prevenção de suspensão de cirurgias).
 - **Regras de Negócio (Travas Hospitalares):**
-  1. **Trava de Dosagem Segura (Anti-Erro Médico):** O sistema impede que enfermeiros registrem a saída de uma dosagem letal. Se a `dose_prescrita` na movimentação for maior que a `dose_maxima` cadastrada para o medicamento, a API bloqueia a saída na hora para salvar a vida do paciente.
-  2. **Trava de Medicamentos Controlados (ANVISA):** Se um medicamento for marcado como `controlado = true`, o sistema exige obrigatoriamente o preenchimento do `crm_medico`. Caso contrário, a API bloqueia a ação.
-  3. **Trava de Estoque Físico:** É proibido registrar uma movimentação de "saída" se a quantidade solicitada for maior que o saldo atual do produto.
-  4. **Alerta de Ruptura (Emergência):** Os produtos possuem um `estoque_minimo_emergencia`. Um endpoint exclusivo lista os medicamentos que estão perto de acabar, permitindo ação rápida da gestão hospitalar.
+  - **Trava de Dosagem Segura (Anti-Erro Médico):** O sistema impede que enfermeiros registrem a saída de uma dosagem letal. Se a `dose_prescrita` na movimentação for maior que a `dose_maxima` cadastrada para o medicamento, a API bloqueia a saída na hora para salvar a vida do paciente.
+  - **Trava de Medicamentos Controlados (ANVISA):** Se um medicamento for marcado como `controlado = true`, o sistema exige obrigatoriamente o preenchimento do `crm_medico`. Caso contrário, a API bloqueia a ação.
+  - **Trava de Estoque Físico:** É proibido registrar uma movimentação de "saída" se a quantidade solicitada for maior que o saldo atual do produto.
+  - **Alerta de Ruptura (Emergência):** Os produtos possuem um `estoque_minimo_emergencia`. Um endpoint exclusivo lista os medicamentos que estão perto de acabar, permitindo ação rápida da gestão hospitalar.
 
 ## Entidades Principais do Sistema
 - **Categoria:** Agrupa produtos por similaridade (ex: "Bebidas", "Ingredientes"). Atributos: `id`, `nome` (único), `descricao`.
