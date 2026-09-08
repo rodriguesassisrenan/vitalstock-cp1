@@ -84,5 +84,5 @@ A API disponibiliza endpoints para cada entidade. Exemplos:
 A documentação interativa e completa (Swagger UI) é gerada automaticamente pelo FastAPI. Após iniciar a API, acesse:
 **[http://localhost:8000/docs](http://localhost:8000/docs)**
 
-## Link do Trello/Notion
+## Link do Trello
 **[https://trello.com/invite/b/6aa07858cf22cef7e97177fb/ATTI9d4d66b9cbd5005694147045ecb10e0cE67414DC/vitalstock-cp1](https://trello.com/invite/b/6aa07858cf22cef7e97177fb/ATTI9d4d66b9cbd5005694147045ecb10e0cE67414DC/vitalstock-cp1)**
