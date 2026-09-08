@@ -27,9 +27,9 @@ O **VitalStock** atua como uma API blindada que garante a integridade dos dados 
 - **Movimentacao:** Registro de alteração de saldo. Atributos: `id`, `produto_id` (FK), `tipo` ('entrada' ou 'saida'), `quantidade`, `data_hora`.
 
 ## Integrantes do Grupo
- Gustavo Lino (RM-574157)
- Renan de A. Rodrigues (RM-574049)
- Lucas Lopes Arias (RM-570875)
+ - Gustavo Lino (RM-574157)
+ - Renan de A. Rodrigues (RM-574049)
+ - Lucas Lopes Arias (RM-570875)
 
 ## Tecnologias Utilizadas e Arquitetura Inicial
 - **Backend:** Python 3.10+, FastAPI, Uvicorn
