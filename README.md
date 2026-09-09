@@ -30,6 +30,7 @@ O **VitalStock** atua como uma API blindada que garante a integridade dos dados 
  - Gustavo Lino (RM-574157)
  - Renan de A. Rodrigues (RM-574049)
  - Lucas Lopes Arias (RM-570875)
+ - Luany Teles (RM-569954)
 
 ## Tecnologias Utilizadas e Arquitetura Inicial
 - **Backend:** Python 3.10+, FastAPI, Uvicorn
