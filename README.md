@@ -16,7 +16,7 @@ Controle de estoque para farmácia hospitalar e centro cirúrgico. Projeto da di
 - Repositório: https://github.com/rodriguesassisrenan/vitalstock-cp1
 - Trello: https://trello.com/invite/b/6aa07858cf22cef7e97177fb/ATTI9d4d66b9cbd5005694147045ecb10e0cE67414DC/vitalstock-cp1
 - Deploy (AWS EC2): http://34.204.49.93:8000/ (Swagger em http://34.204.49.93:8000/docs, healthcheck em http://34.204.49.93:8000/health)
-- Apresentação: LINK_DA_APRESENTACAO
+- Apresentação do CP3: [Apresentação/VitalStock_CP3.pdf](Apresentação/VitalStock_CP3.pdf)
 
 ## Tema e objetivo
 
