@@ -1,65 +1,71 @@
-# 🐳 Guia de Containerização (Docker) e Deploy Econômico na AWS EC2 (CP3)
+# Docker e deploy na AWS
 
-Este documento detalha os comandos de construção e execução via contêineres Docker e o passo a passo para publicação na **AWS (Amazon Web Services)** utilizando uma instância gratuita/econômica (**EC2 `t2.micro` ou `t3.micro` Free Tier**).
+A aplicação roda num contêiner só (API + frontend). O banco SQLite fica num volume do Docker (`vitalstock_data`), então os dados continuam lá quando o contêiner é recriado.
 
----
-
-## 1. Containerização com Docker (`Dockerfile` e `compose.yaml`)
-
-O serviço central do **VitalStock ERP** está containerizado na raiz do projeto ([`Dockerfile`](../Dockerfile) e [`compose.yaml`](../compose.yaml)), expondo na porta `8000`:
-- **Aplicação Web & Dashboard Hospitalar:** `http://localhost:8000/`
-- **Documentação Interativa OpenAPI (Swagger):** `http://localhost:8000/docs`
-- **Healthcheck do Contêiner:** `http://localhost:8000/health`
-
-### Comandos para Construção e Inicialização do Contêiner:
+## Docker local
 
 ```bash
-# 1. Construir a imagem e iniciar o contêiner em background com Docker Compose
 docker compose up -d --build
-
-# 2. Verificar evidência do contêiner em execução e status (healthy)
-docker compose ps
-
-# 3. Ou utilizando comandos Docker diretos:
-docker build -t vitalstock-api:3.0 .
-docker run -d --name vitalstock-container -p 8000:8000 -e APP_ENV=production vitalstock-api:3.0
-
-# 4. Testar resposta do serviço
+docker compose ps                     # STATUS deve mostrar (healthy)
 curl http://localhost:8000/health
+docker compose exec vitalstock-api pytest -q
+docker compose logs --tail 20
 ```
 
----
+Sem compose:
 
-## 2. Deploy na AWS EC2 (Forma Mais Econômica / Free Tier — Custo Zero)
+```bash
+docker build -t vitalstock-api .
+docker run -d --name vitalstock -p 8000:8000 --env-file .env vitalstock-api
+```
 
-O repositório inclui o script automatizado [`deploy_aws.sh`](../deploy_aws.sh), projetado para rodar em uma instância **AWS EC2 `t2.micro` ou `t3.micro` (Ubuntu 22.04/24.04 LTS ou Amazon Linux 2023)** dentro do nível gratuito (*AWS Free Tier* ou *AWS Academy Learner Lab*).
+O contêiner roda com um usuário sem privilégio de root (`appuser`) e tem `HEALTHCHECK` chamando `/health`.
 
-### Passo 1: Criar a Instância EC2 na AWS
-1. No console da AWS, acesse **EC2** $\rightarrow$ **Launch instance**.
-2. **Name:** `vitalstock-cp3-server`
-3. **AMI (Sistema Operacional):** **Ubuntu Server 24.04 LTS** (Free tier eligible).
-4. **Instance type:** **`t2.micro`** ou **`t3.micro`** (Free tier eligible — **custo US$ 0,00**).
-5. **Security Group (Firewall):**
-   - Marque **Allow SSH traffic** (porta `22`).
-   - Clique em **Add security group rule** e adicione:
-     - **Type:** `Custom TCP` | **Port range:** `8000` | **Source:** `0.0.0.0/0` (Anywhere IPv4).
-6. Clique em **Launch instance** e depois em **Connect** (pode conectar direto pelo navegador usando a aba **EC2 Instance Connect**!).
+## Deploy na AWS pelo CloudShell
 
-### Passo 2: Rodar o Deploy Automático no Terminal da EC2
-Assim que abrir o terminal preto da EC2 no navegador, copie e cole apenas este bloco:
+O script [`aws/cloudshell_criar_ec2.sh`](../aws/cloudshell_criar_ec2.sh) faz tudo a partir do CloudShell do console da AWS:
 
 ```bash
 git clone https://github.com/rodriguesassisrenan/vitalstock-cp1.git
 cd vitalstock-cp1
-chmod +x deploy_aws.sh
-./deploy_aws.sh
+bash aws/cloudshell_criar_ec2.sh
 ```
 
-*(O script instala o Docker e o Docker Compose sozinho, constrói a imagem, sobe o contêiner com volume persistente e já imprime na tela o link público `http://SEU_IP_PUBLICO:8000/` pronto para abrir!).*
+O que ele faz:
 
-### Passo 3: Como Configurar a Chave do Google Gemini na Apresentação
-- **Sem expor nada no GitHub:** Abra o endereço `http://SEU_IP_PUBLICO_EC2:8000/` no navegador, clique no menu lateral em **"Automação Clínica (LLM)"**, cole a sua chave gerada no [Google AI Studio](https://aistudio.google.com/app/apikey) no campo **"Cole sua GEMINI_API_KEY"** e clique em **"Aplicar Chave Gemini"**.
-- Ou, se preferir já subir com a chave direto no terminal da EC2:
-  ```bash
-  sudo GEMINI_API_KEY="AIzaSySuaChaveRealAqui" docker compose up -d
-  ```
+1. Pede a chave do Gemini sem mostrar na tela (pode deixar em branco).
+2. Busca a AMI oficial do Ubuntu 24.04.
+3. Cria o security group `vitalstock-sg` liberando só a porta 8000. Não abre SSH.
+4. Cria uma EC2 `t3.micro` com disco criptografado, IMDSv2 obrigatório e, no AWS Academy, o perfil padrão `LabInstanceProfile`.
+5. No primeiro boot (user-data) a máquina instala Docker, clona o repositório, grava o `.env` com permissão 600 e roda `docker compose up -d --build`.
+6. Espera `/health` responder e mostra o link.
+
+Cuidados de segurança adotados:
+
+- Nenhuma chave de acesso da AWS (Access Key) é criada ou usada; o CloudShell já usa a sessão do console.
+- A chave do Gemini não fica no Git nem no histórico do terminal. Ela fica no `.env` da instância e no user-data, que só quem tem acesso à conta AWS consegue ler. Depois da avaliação a chave deve ser revogada no Google AI Studio.
+- A única porta aberta para a internet é a 8000.
+
+Se não responder em 10 minutos, o script mostra o log de inicialização da máquina (`get-console-output`).
+
+Para desligar: `aws ec2 terminate-instances --instance-ids <id mostrado pelo script>`.
+
+## Deploy manual numa EC2 já criada
+
+Com uma EC2 Ubuntu e acesso ao terminal dela (EC2 Instance Connect ou SSH):
+
+```bash
+git clone https://github.com/rodriguesassisrenan/vitalstock-cp1.git
+cd vitalstock-cp1
+cp .env.example .env
+nano .env                 # preencher GEMINI_API_KEY
+bash aws/deploy_ec2.sh
+```
+
+## Como verificar o deploy
+
+- `http://IP:8000/health` responde `{"status": "healthy", ...}` e o campo `llm` mostra o modelo do Gemini quando a chave foi configurada.
+- `http://IP:8000/docs` abre o Swagger.
+- `http://IP:8000/` abre o dashboard com os dados de exemplo.
+
+No AWS Academy o laboratório desliga a instância quando a sessão acaba, e o IP público muda ao ligar de novo. Antes de apresentar, ligar o lab, conferir o IP em EC2 > Instances e atualizar o link se for preciso.
