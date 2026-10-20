@@ -1,89 +1,125 @@
-# VitalStock API
+# VitalStock ERP — Gestão de Farmácia Hospitalar e Bloco Cirúrgico (CP3)
 
-## Descrição
-Esta é a entrega do Checkpoint 1 (CP1). Trata-se de uma API REST desenvolvida em Python (FastAPI) para controle e gestão inteligente de insumos hospitalares. O sistema ("VitalStock") permite o cadastro de categorias e medicamentos, registrando movimentações em tempo real e garantindo a segurança operacional do hospital.
+> **Sistema Integrado de Controle de Insumos Cirúrgicos, Travas Clínicas (ANVISA Portaria 344/98 e Anti-Overdose), Dashboard Hospitalar e Automação Clínica com LLM.**
 
-## O Problema: A Crise Invisível nos Hospitais
-A falta de insumos (anestésicos, fios de sutura, medicamentos vitais) é uma das maiores causas de **cancelamento de cirurgias de urgência e oncológicas no Brasil**. Por outro lado, estudos indicam que até 20% dos medicamentos em hospitais são desperdiçados por passarem da validade devido à falta de gestão de estoque. Furos no estoque não significam apenas prejuízo financeiro, mas **risco direto à vida dos pacientes** que já estão no bloco cirúrgico.
-
-## A Solução Proposta (VitalStock)
-O **VitalStock** atua como uma API blindada que garante a integridade dos dados de farmácias hospitalares e blocos cirúrgicos. Através de travas de software estritas, o sistema impede o registro de saídas fantasmas e bloqueia retiradas caso o saldo seja insuficiente, garantindo que o estoque digital reflita a realidade física.
-
-**O Futuro (CP2/CP3):** Como evolução da arquitetura, o VitalStock será integrado a agentes de Inteligência Artificial (LLMs). O objetivo é que médicos ou enfermeiros chefes relatem a conclusão de um procedimento cirúrgico por áudio ou texto natural, e a IA deduza e baixe automaticamente do estoque os medicamentos e descartáveis utilizados, eliminando o erro humano do processo.
-
-## Principais Funcionalidades e Regras de Negócio
-- Cadastro, leitura, atualização e exclusão (CRUD) de Categorias e Produtos.
-- Registro de Movimentações (entrada e saída).
-- Endpoint para Relatório de Alertas (Prevenção de suspensão de cirurgias).
-- **Regras de Negócio (Travas Hospitalares):** <br><br>
-  1\.  **Trava de Dosagem Segura (Anti-Erro Médico):** O sistema impede que enfermeiros registrem a saída de uma dosagem letal. Se a `dose_prescrita` na movimentação for maior que a `dose_maxima` cadastrada para o medicamento, a API bloqueia a saída na hora para salvar a vida do paciente. <br><br>
-  2\.  **Trava de Medicamentos Controlados (ANVISA):** Se um medicamento for marcado como `controlado = true`, o sistema exige obrigatoriamente o preenchimento do `crm_medico`. Caso contrário, a API bloqueia a ação. <br><br>
-  3\.  **Trava de Estoque Físico:** É proibido registrar uma movimentação de "saída" se a quantidade solicitada for maior que o saldo atual do produto. <br><br>
-  4\.  **Alerta de Ruptura (Emergência):** Os produtos possuem um `estoque_minimo_emergencia`. Um endpoint exclusivo lista os medicamentos que estão perto de acabar, permitindo ação rápida da gestão hospitalar. <br><br>
-
-## Entidades Principais do Sistema
-- **Categoria:** Agrupa produtos por similaridade (ex: "Bebidas", "Ingredientes"). Atributos: `id`, `nome` (único), `descricao`.
-- **Produto:** Item controlado pelo estoque. Atributos: `id`, `categoria_id` (FK), `nome`, `preco`, `saldo_atual`.
-- **Movimentacao:** Registro de alteração de saldo. Atributos: `id`, `produto_id` (FK), `tipo` ('entrada' ou 'saida'), `quantidade`, `data_hora`.
+---
 
 ## Integrantes do Grupo
- - Gustavo Lino (RM-574157)
- - Renan de A. Rodrigues (RM-574049)
- - Lucas Lopes Arias (RM-570875)
- - Luany Teles (RM-569954)
+- **Gustavo Lino** — RM: `574157`
+- **Renan de A. Rodrigues** — RM: `574049`
+- **Lucas Lopes Arias** — RM: `570875`
+- **Luany Teles** — RM: `569954`
 
-## Tecnologias Utilizadas e Arquitetura Inicial
-- **Backend:** Python 3.10+, FastAPI, Uvicorn
-- **ORM e Validação:** SQLAlchemy, Pydantic v2
-- **Arquitetura Inicial:** Estruturada em camadas para facilitar a manutenção:
-  - `api/v1/`: Define os endpoints, roteadores e métodos HTTP.
-  - `services/`: Contém as regras de negócio e integrações com o banco.
-  - `models/`: Mapeamento das tabelas do banco de dados (SQLAlchemy).
-  - `schemas/`: Classes de validação de dados de requisição/resposta (Pydantic).
-  - `core/`: Configurações centrais do sistema.
+---
 
-## Banco de Dados Utilizado
-- **Banco de Dados:** SQLite
-(Escolhido para o CP1 pela facilidade de execução local e por não requerer dependências externas complexas para avaliação).
+## Links do Projeto
+- **Repositório GitHub:** [https://github.com/rodriguesassisrenan/vitalstock-cp1](https://github.com/rodriguesassisrenan/vitalstock-cp1)
+- **Quadro Ágil (Trello):** [https://trello.com/invite/b/6aa07858cf22cef7e97177fb/ATTI9d4d66b9cbd5005694147045ecb10e0cE67414DC/vitalstock-cp1](https://trello.com/invite/b/6aa07858cf22cef7e97177fb/ATTI9d4d66b9cbd5005694147045ecb10e0cE67414DC/vitalstock-cp1)
+- **Ambiente de Deploy (AWS EC2 Docker):** Configurado via [`deploy_aws.sh`](deploy_aws.sh) na porta `8000` (instruções de acesso e verificação em [`docs/deploy_e_docker.md`](docs/deploy_e_docker.md))
+- **Interface Web & Dashboard:** `http://localhost:8000/` (ou `http://<IP_PUBLICO_AWS_EC2>:8000/`)
+- **Documentação Swagger OpenAPI:** `http://localhost:8000/docs`
+- **Healthcheck do Serviço:** `http://localhost:8000/health`
 
-## Configuração das Variáveis de Ambiente
-Para este CP1, **não há variáveis de ambiente sensíveis ou arquivos `.env` necessários**. O banco de dados SQLite roda de forma totalmente local e a URL de conexão já está configurada diretamente no código (`sqlite:///./estoque.db`). 
+---
 
-## Instruções de Instalação e Execução
-1. **Clone o repositório:**
-```bash
-git clone https://github.com/rodriguesassisrenan/vitalstock-cp1.git
-cd vitalstock-cp1
+## Tema, Problema e Objetivo da Solução
+
+A falta de insumos críticos (anestésicos venosos, opióides, fios de sutura) é uma das principais causas de **cancelamento de cirurgias de urgência no Brasil**, enquanto erros de dosagem na dispensação hospitalar e falhas no controle de medicamentos da **Portaria 344/98 (ANVISA)** geram graves riscos à vida do paciente.
+
+O **VitalStock ERP** resolve esse problema integrando uma API RESTful em Python/FastAPI, banco de dados relacional normalizado (3FN), interface visual de gestão farmacêutica com Dashboard em tempo real e integração com **Large Language Model (Google Gemini API)** acoplada a **4 travas de segurança hospitalar**:
+1. **Trava de Dosagem Segura (Anti-Overdose):** Bloqueia saídas cuja `dose_prescrita` exceda a `dose_maxima` segura cadastrada para o medicamento.
+2. **Trava da ANVISA (Portaria 344/98):** Exige obrigatoriamente o preenchimento do `crm_medico` para retirada de medicamentos controlados (`controlado = true`).
+3. **Trava de Estoque Físico:** Impede saídas superiores ao `saldo_atual` disponível no hospital.
+4. **Alerta de Ruptura Cirúrgica:** Monitora continuamente os insumos com `saldo_atual <= estoque_minimo_emergencia`.
+5. **Automação Clínica com LLM (`/api/v1/ia/interpretar-relato` e `/api/v1/ia/relatorio-inteligente`):** Lê relatos pós-operatórios em texto livre, anonimiza CPFs em conformidade com a LGPD, extrai medicamentos/doses/CRM, valida nas travas clínicas antes da baixa automática e emite parecer de ressuprimento.
+
+---
+
+## Visão Geral da Arquitetura e Estrutura de Pastas (Padrão CP3)
+
+```text
+CP3/
+├── src/ (e app/)                 # Código-fonte da aplicação (FastAPI + SQLAlchemy + Frontend ERP)
+│   ├── main.py                   # Inicialização da API, CORS, Seed inicial, StaticFiles e /health
+│   ├── core/                     # Configurações (.env) e conexão SQLite com PRAGMA foreign_keys=ON
+│   ├── models/                   # Modelagem 3FN: Categoria, Fornecedor, Produto, Movimentacao, HistoricoIA
+│   ├── schemas/                  # Contratos e validações de entrada/saída (Pydantic v2)
+│   ├── services/                 # Regras de negócio, travas hospitalares e integração Google Gemini LLM
+│   ├── api/v1/endpoints/         # Rotas REST (/categorias, /produtos, /movimentacoes, /dashboard, /ia)
+│   └── static/                   # Interface Frontend + Dashboard Hospitalar (HTML5, CSS3, JS + Chart.js)
+├── tests/
+│   └── test_vitalstock.py        # 12 testes automatizados (pytest + FastAPI TestClient)
+├── docs/
+│   ├── testes.md                 # Cenários de teste (sucesso, erro e integração) e correções realizadas
+│   ├── monetizacao.md            # Proposta de monetização B2B SaaS, preços, custos operacionais e viabilidade
+│   ├── deploy_e_docker.md        # Guia de containerização Docker e deploy na AWS EC2
+│   └── evolucao_cp2_banco_e_ia.md# Documentação da normalização do banco, otimização de API e LLM
+├── evidencias/                   # Relatório do pytest e prints de execução e funcionamento
+├── Dockerfile                    # Containerização do serviço principal
+├── compose.yaml                  # Orquestração Docker Compose com volume persistente e healthcheck
+├── deploy_aws.sh                 # Script de provisionamento e deploy em 1 comando na AWS EC2
+├── .env.example                  # Exemplo de variáveis de ambiente (sem exposição de segredos)
+└── requirements.txt              # Dependências Python
 ```
-2. **(Opcional) Crie e ative um ambiente virtual:**
-```bash
-python -m venv venv
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-```
-3. **Instale as dependências:**
+
+---
+
+## Variáveis de Ambiente (Sem Exposição de Segredos)
+
+Configuradas via arquivo `.env` ou variáveis do contêiner Docker (modelo em [`.env.example`](.env.example)):
+- `APP_ENV`: Ambiente de execução (`development` ou `production`).
+- `DATABASE_URL`: Caminho de persistência do banco (`sqlite:///./estoque.db` local ou `sqlite:///./data/estoque.db` no contêiner).
+- `AUTO_SEED`: Quando `true`, popula o catálogo inicial caso o banco esteja vazio.
+- `GEMINI_API_KEY`: Chave da API Google Gemini (configurada apenas no servidor AWS ou na interface web durante a demonstração, nunca exposta no GitHub).
+- `GEMINI_MODEL`: Modelo utilizado (`gemini-2.5-flash`).
+
+---
+
+## Comandos para Instalação, Testes e Execução com Docker
+
+### 1. Execução Local
 ```bash
 pip install -r requirements.txt
-```
-4. **Inicie o servidor local:**
-```bash
 uvicorn app.main:app --reload
 ```
-A API estará rodando em `http://127.0.0.1:8000`. As tabelas do banco de dados são criadas automaticamente na primeira execução.
 
-## Principais Endpoints
-A API disponibiliza endpoints para cada entidade. Exemplos:
-- **GET** `/api/v1/produtos/` - Lista todos os produtos
-- **POST** `/api/v1/categorias/` - Cria uma nova categoria
-- **PUT** `/api/v1/produtos/{id}` - Atualiza dados de um produto existente
-- **DELETE** `/api/v1/categorias/{id}` - Exclui uma categoria (se não houver produtos vinculados)
-- **POST** `/api/v1/movimentacoes/` - Registra uma nova entrada ou saída de estoque
+### 2. Execução dos Testes Automatizados (`pytest`)
+```bash
+pytest -v
+```
 
-## Link para Documentação Swagger
-A documentação interativa e completa (Swagger UI) é gerada automaticamente pelo FastAPI. Após iniciar a API, acesse:
-**[http://localhost:8000/docs](http://localhost:8000/docs)**
+### 3. Execução com Docker / Docker Compose
+```bash
+# Construir imagem e iniciar contêiner
+docker compose up -d --build
 
-## Link do Trello
-**[https://trello.com/invite/b/6aa07858cf22cef7e97177fb/ATTI9d4d66b9cbd5005694147045ecb10e0cE67414DC/vitalstock-cp1](https://trello.com/invite/b/6aa07858cf22cef7e97177fb/ATTI9d4d66b9cbd5005694147045ecb10e0cE67414DC/vitalstock-cp1)**
+# Verificar contêiner em execução e healthcheck
+docker compose ps
+curl http://localhost:8000/health
+```
+
+### 4. Deploy na AWS EC2 (Free Tier)
+```bash
+chmod +x deploy_aws.sh
+./deploy_aws.sh
+```
+
+---
+
+## Resumo dos Testes e Resultados ([`docs/testes.md`](docs/testes.md))
+
+Foram elaborados e automatizados **12 cenários de teste** em [`tests/test_vitalstock.py`](tests/test_vitalstock.py) (log completo em [`evidencias/relatorio_pytest.txt`](evidencias/relatorio_pytest.txt)), cobrindo:
+- **Sucesso e Integração:** Healthcheck e Frontend (`CT-01`), CRUD de Categorias (`CT-02`), Cadastro de Controlados com Saldo Inicial (`CT-04`), Saída Válida com disparo de Alerta Cirúrgico (`CT-08`), Filtros e Dashboard Consolidado (`CT-09`), Baixa Automática por Relato Cirúrgico IA (`CT-10`) e Parecer de Compras IA (`CT-12`).
+- **Cenários de Erro e Travas Hospitalares:** Bloqueio de Categoria Duplicada (`CT-03`), Bloqueio ANVISA para saída de controlado sem CRM (`CT-05`), Bloqueio Anti-Overdose para dose prescrita acima do limite (`CT-06`), Bloqueio de Estoque Físico Insuficiente (`CT-07`) e Bloqueio de Overdose no Relato IA com anonimização de CPF pela LGPD (`CT-11`).
+- **Resultado Obtido:** `12 passed in 0.76s` (100% de aprovação).
+
+---
+
+## Proposta de Monetização ([`docs/monetizacao.md`](docs/monetizacao.md))
+
+- **Público-Alvo:** Clínicas cirúrgicas ambulatoriais (*Day Hospitals*) e hospitais de pequeno/médio porte (20 a 150 leitos).
+- **Modelo de Receita:** **Assinatura Mensal B2B SaaS em Tiers** (*VitalStock Clinic*: R\$ 890/mês | *Hospital Pro*: R\$ 1.990/mês | *Enterprise*: R\$ 4.490/mês).
+- **Simulação Financeira (Cenário de 25 instituições clientes):**
+  - **Faturamento Mensal Recorrente (MRR):** `R$ 45.550,00 / mês` (`R$ 546.600,00 / ano`)
+  - **Custos Operacionais Mensais (Cloud AWS + Banco + API Gemini + Manutenção/Suporte + Impostos):** `R$ 10.871,75 / mês`
+  - **Resultado Líquido Mensal:** `R$ 34.678,25 / mês` (**Margem Líquida de 76,1%**; ponto de equilíbrio com apenas 4 hospitais).
