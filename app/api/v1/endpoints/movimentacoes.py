@@ -27,7 +27,7 @@ def read_movimentacoes(
     "/",
     response_model=estoque_schemas.Movimentacao,
     status_code=status.HTTP_201_CREATED,
-    summary="Registrar entrada ou saída de estoque (com Travas ANVISA e Anti-Overdose)",
+    summary="Registrar entrada ou saída (aplica as travas de CRM, dose e saldo)",
 )
 def create_movimentacao(movimentacao: estoque_schemas.MovimentacaoCreate, db: Session = Depends(get_db)):
     return estoque_service.create_movimentacao(db, movimentacao)

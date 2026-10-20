@@ -11,20 +11,17 @@ router = APIRouter()
 @router.get(
     "/resumo",
     response_model=estoque_schemas.DashboardResumo,
-    summary="Obter dados consolidados e métricas em tempo real para o Dashboard Hospitalar",
+    summary="Dados consolidados do dashboard",
 )
 def read_dashboard_resumo(db: Session = Depends(get_db)):
-    """
-    Endpoint otimizado (CP2/CP3) que consolida indicadores KPIs, alertas de ruptura cirúrgica,
-    distribuição por categoria e histórico recente em uma única requisição.
-    """
+    """KPIs, alertas, distribuição por categoria e últimas 12 movimentações numa chamada só."""
     return estoque_service.get_dashboard_resumo(db)
 
 
 @router.get(
     "/fornecedores",
     response_model=List[estoque_schemas.Fornecedor],
-    summary="Listar laboratórios e fornecedores cadastrados (Tabela Normalizada 3FN)",
+    summary="Listar fornecedores",
 )
 def read_fornecedores(db: Session = Depends(get_db)):
     return estoque_service.get_fornecedores(db)
@@ -34,7 +31,7 @@ def read_fornecedores(db: Session = Depends(get_db)):
     "/fornecedores",
     response_model=estoque_schemas.Fornecedor,
     status_code=status.HTTP_201_CREATED,
-    summary="Cadastrar novo laboratório/fornecedor hospitalar",
+    summary="Cadastrar fornecedor",
 )
 def create_fornecedor(fornecedor: estoque_schemas.FornecedorCreate, db: Session = Depends(get_db)):
     return estoque_service.create_fornecedor(db, fornecedor)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
@@ -8,7 +8,10 @@ from app.services import estoque_service
 router = APIRouter()
 
 @router.get("/", response_model=List[estoque_schemas.Categoria])
-def read_categorias(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_categorias(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db)):
     return estoque_service.get_categorias(db, skip=skip, limit=limit)
 
 @router.get("/{categoria_id}", response_model=estoque_schemas.Categoria)

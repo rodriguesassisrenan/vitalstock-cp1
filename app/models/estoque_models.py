@@ -19,10 +19,7 @@ class Categoria(Base):
 
 
 class Fornecedor(Base):
-    """
-    Entidade adicionada na revisão e normalização do banco (CP2 - 3ª Forma Normal).
-    Evita duplicidade de dados de laboratórios/fornecedores dentro da tabela de produtos.
-    """
+    # separado de produtos para não repetir nome/CNPJ do laboratório em cada item
     __tablename__ = "fornecedores"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -48,9 +45,9 @@ class Produto(Base):
     unidade_medida = Column(String(30), default="ampola", nullable=False)
     preco = Column(Float, nullable=False)
     saldo_atual = Column(Integer, default=0, nullable=False)
-    controlado = Column(Integer, default=0, nullable=False)  # 0 para Falso, 1 para Verdadeiro (SQLite)
-    dose_maxima = Column(Float, nullable=True)  # Limite seguro em mg para não causar overdose no paciente
-    estoque_minimo_emergencia = Column(Integer, default=0, nullable=False)  # Gatilho de alerta de falta cirúrgica
+    controlado = Column(Integer, default=0, nullable=False)  # 0/1
+    dose_maxima = Column(Float, nullable=True)  # mg por aplicação
+    estoque_minimo_emergencia = Column(Integer, default=0, nullable=False)  # abaixo disso entra em alerta
 
     categoria = relationship("Categoria", back_populates="produtos")
     fornecedor = relationship("Fornecedor", back_populates="produtos")
@@ -67,19 +64,17 @@ class Movimentacao(Base):
     produto_id = Column(Integer, ForeignKey("produtos.id", ondelete="CASCADE"), nullable=False, index=True)
     tipo = Column(String(20), nullable=False, index=True)  # 'entrada' ou 'saida'
     quantidade = Column(Integer, nullable=False)
-    crm_medico = Column(String(40), nullable=True)  # Exigido apenas para saída de controlados (ANVISA)
-    dose_prescrita = Column(Float, nullable=True)  # A dose que o médico receitou na saída (mg)
-    nome_paciente = Column(String(120), nullable=True)  # Para rastreabilidade cirúrgica
-    observacao = Column(String(255), nullable=True)  # Origem: manual ou relato IA
+    crm_medico = Column(String(40), nullable=True)  # obrigatório na saída de controlados
+    dose_prescrita = Column(Float, nullable=True)  # mg
+    nome_paciente = Column(String(120), nullable=True)
+    observacao = Column(String(255), nullable=True)
     data_hora = Column(DateTime, default=utc_now, nullable=False, index=True)
 
     produto = relationship("Produto", back_populates="movimentacoes")
 
 
 class HistoricoIA(Base):
-    """
-    Auditoria das interações com a LLM (CP2/CP3 - Governança e Rastreabilidade Hospitalar).
-    """
+    # registro de cada chamada à IA: o que entrou (já sem CPF), o que saiu e qual modelo respondeu
     __tablename__ = "historico_ia"
 
     id = Column(Integer, primary_key=True, index=True)

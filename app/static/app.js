@@ -44,6 +44,16 @@ function switchTab(tabId, breadcrumbText, btnEl) {
   }
 }
 
+function esc(val) {
+  if (val === null || val === undefined) return '';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function formatCurrency(val) {
   return Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -77,7 +87,7 @@ async function loadDashboard() {
           (p) => `
           <div class="alert-chip">
             <span class="pill pill-critical"><span class="pill-dot"></span>Crítico</span>
-            <strong>${p.nome}</strong>
+            <strong>${esc(p.nome)}</strong>
             <span class="mono" style="color:var(--text-secondary);">Saldo: <b>${p.saldo_atual}</b> / Mín: ${p.estoque_minimo_emergencia}</span>
           </div>`
         )
@@ -93,16 +103,16 @@ async function loadDashboard() {
         <tr>
           <td class="mono">#${m.id}</td>
           <td class="mono" style="font-size:12px;color:var(--text-secondary);">${formatDate(m.data_hora)}</td>
-          <td><strong>${m.produto_nome}</strong></td>
+          <td><strong>${esc(m.produto_nome)}</strong></td>
           <td>
             <span class="pill ${m.tipo === 'entrada' ? 'pill-optimal' : 'pill-warning'}">
               <span class="pill-dot"></span>${m.tipo === 'entrada' ? 'Entrada' : 'Saída'}
             </span>
           </td>
           <td class="mono"><strong>${m.quantidade}</strong></td>
-          <td class="mono">${m.crm_medico || '<span style="color:var(--text-muted)">—</span>'}</td>
+          <td class="mono">${esc(m.crm_medico) || '<span style="color:var(--text-muted)">—</span>'}</td>
           <td class="mono">${m.dose_prescrita ? m.dose_prescrita + ' mg' : '<span style="color:var(--text-muted)">—</span>'}</td>
-          <td>${m.nome_paciente || m.observacao || '—'}</td>
+          <td>${esc(m.nome_paciente) || esc(m.observacao) || '—'}</td>
         </tr>`
       )
       .join('');
@@ -200,15 +210,15 @@ async function loadCategorias() {
   const selectFiltro = document.getElementById('filtro-categoria');
   const tagsDiv = document.getElementById('categorias-tags');
 
-  selectProd.innerHTML = cachedCategorias.map((c) => `<option value="${c.id}">${c.nome}</option>`).join('');
+  selectProd.innerHTML = cachedCategorias.map((c) => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   const currentFilter = selectFiltro.value;
   selectFiltro.innerHTML =
     `<option value="">Todos os Grupos</option>` +
-    cachedCategorias.map((c) => `<option value="${c.id}">${c.nome}</option>`).join('');
+    cachedCategorias.map((c) => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   selectFiltro.value = currentFilter;
 
   tagsDiv.innerHTML = cachedCategorias
-    .map((c) => `<span class="pill pill-neutral" title="${c.descricao || ''}">Cód. ${c.id} — ${c.nome}</span>`)
+    .map((c) => `<span class="pill pill-neutral" title="${esc(c.descricao) || ''}">Cód. ${c.id} — ${esc(c.nome)}</span>`)
     .join('');
 }
 
@@ -261,8 +271,8 @@ async function loadProdutos() {
       return `
       <tr>
         <td class="mono">#${p.id}</td>
-        <td><strong>${p.nome}</strong></td>
-        <td class="mono" style="font-size:12px;color:var(--text-secondary);">${p.lote || 'PADRÃO'} · ${p.unidade_medida || 'un'}</td>
+        <td><strong>${esc(p.nome)}</strong></td>
+        <td class="mono" style="font-size:12px;color:var(--text-secondary);">${esc(p.lote) || 'PADRÃO'} · ${esc(p.unidade_medida) || 'un'}</td>
         <td class="mono">${formatCurrency(p.preco)}</td>
         <td>
           <div class="stock-cell">
@@ -287,7 +297,7 @@ async function loadProdutos() {
             : '<span class="pill pill-optimal"><span class="pill-dot"></span>Estoque Regular</span>'
         }</td>
         <td>
-          <button class="btn btn-danger-ghost" onclick="handleDeleteProduto(${p.id}, '${p.nome.replace(/'/g, "\\'")}')">Remover</button>
+          <button class="btn btn-danger-ghost" onclick="handleDeleteProduto(${Number(p.id)})">Remover</button>
         </td>
       </tr>`;
     })
@@ -323,13 +333,17 @@ async function handleCreateProduto(e) {
   loadProdutos();
 }
 
-async function handleDeleteProduto(id, nome) {
+async function handleDeleteProduto(id) {
+  const produto = cachedProdutos.find((p) => p.id === id);
+  const nome = produto ? produto.nome : `#${id}`;
+  if (!confirm(`Remover "${nome}" do catálogo?`)) return;
   const res = await fetch(`${API_BASE}/produtos/${id}`, { method: 'DELETE' });
   if (res.status === 204) {
     showFeedback(`Item "${nome}" removido do catálogo.`);
     loadProdutos();
   } else {
-    showFeedback('Não foi possível remover o item selecionado.', 'error');
+    const data = await res.json().catch(() => ({}));
+    showFeedback(data.detail || 'Não foi possível remover o item selecionado.', 'error');
   }
 }
 
@@ -341,7 +355,7 @@ async function loadProdutosSelect() {
   sel.innerHTML = cachedProdutos
     .map(
       (p) =>
-        `<option value="${p.id}">Cód. ${p.id} — ${p.nome} (Saldo: ${p.saldo_atual} | ${
+        `<option value="${p.id}">Cód. ${p.id} — ${esc(p.nome)} (Saldo: ${p.saldo_atual} | ${
           p.controlado ? 'Portaria 344' : 'Comum'
         }${p.dose_maxima ? ' | Teto: ' + p.dose_maxima + 'mg' : ''})</option>`
     )
@@ -365,9 +379,9 @@ async function loadMovimentacoes() {
           </span>
         </td>
         <td class="mono"><strong>${m.quantidade}</strong></td>
-        <td class="mono">${m.crm_medico || '—'}</td>
+        <td class="mono">${esc(m.crm_medico) || '—'}</td>
         <td class="mono">${m.dose_prescrita ? m.dose_prescrita + ' mg' : '—'}</td>
-        <td>${m.nome_paciente || m.observacao || '—'}</td>
+        <td>${esc(m.nome_paciente) || esc(m.observacao) || '—'}</td>
       </tr>`
     )
     .join('');
@@ -440,26 +454,13 @@ async function verificarStatusChaveGemini() {
     const data = await res.json();
     const lbl = document.getElementById('status-chave-label');
     if (data.gemini_api_ativa) {
-      lbl.innerHTML = `<span class="pill pill-optimal"><span class="pill-dot"></span>Conectado à API Google Gemini (${data.modelo_configurado})</span>`;
+      lbl.innerHTML = `<span class="pill pill-optimal"><span class="pill-dot"></span>Conectado à API Google Gemini (${esc(data.modelo_configurado)})</span>`;
     } else {
-      lbl.innerHTML = `<span class="pill pill-controlled">Modo Local Ativo: ${data.modelo_configurado} (Insira uma chave Gemini ao lado caso deseje chamar a API em nuvem)</span>`;
+      lbl.innerHTML = `<span class="pill pill-controlled">Modo Local Ativo: ${esc(data.modelo_configurado)} (defina GEMINI_API_KEY no servidor para usar o Gemini)</span>`;
     }
   } catch (e) {
     // ignore
   }
-}
-
-async function salvarChaveGemini() {
-  const key = document.getElementById('input-gemini-key').value.trim();
-  const res = await fetch(`${API_BASE}/ia/configurar-chave`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: key }),
-  });
-  const data = await res.json();
-  showFeedback(data.mensagem, 'success');
-  document.getElementById('input-gemini-key').value = '';
-  verificarStatusChaveGemini();
 }
 
 function preencherRelatoIA(tipo) {
@@ -506,13 +507,13 @@ async function handleRelatoIA(e) {
 
     box.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-        <span class="pill ${pillClass}"><span class="pill-dot"></span>${data.status_geral}</span>
-        <span class="mono" style="font-size:11.5px;color:var(--text-muted);">${data.modelo_utilizado}</span>
+        <span class="pill ${pillClass}"><span class="pill-dot"></span>${esc(data.status_geral)}</span>
+        <span class="mono" style="font-size:11.5px;color:var(--text-muted);">${esc(data.modelo_utilizado)}</span>
       </div>
-      <p style="font-size:13px;margin-bottom:10px;color:var(--text-primary);"><strong>Síntese da Validação:</strong> ${data.resumo_clinico_ia}</p>
+      <p style="font-size:13px;margin-bottom:10px;color:var(--text-primary);"><strong>Síntese da Validação:</strong> ${esc(data.resumo_clinico_ia)}</p>
       <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border-light);">
-        <strong>Prescritor:</strong> <span class="mono">${data.crm_identificado || 'Não localizado'}</span> &nbsp;|&nbsp;
-        <strong>Paciente:</strong> ${data.paciente_identificado || 'Não especificado'} &nbsp;|&nbsp;
+        <strong>Prescritor:</strong> <span class="mono">${esc(data.crm_identificado) || 'Não localizado'}</span> &nbsp;|&nbsp;
+        <strong>Paciente:</strong> ${esc(data.paciente_identificado) || 'Não especificado'} &nbsp;|&nbsp;
         <strong>Baixas Efetivadas:</strong> <span class="mono">${data.baixas_realizadas}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -521,14 +522,14 @@ async function handleRelatoIA(e) {
             (it) => `
           <div style="padding:10px 12px;border-radius:6px;background:#ffffff;border:1px solid var(--border-light);">
             <div style="display:flex;justify-content:space-between;align-items:center;">
-              <strong>${it.produto_nome} — <span class="mono">Qtd: ${it.quantidade} | Dose: ${
+              <strong>${esc(it.produto_nome)} — <span class="mono">Qtd: ${it.quantidade} | Dose: ${
               it.dose_prescrita_mg !== null ? it.dose_prescrita_mg + ' mg' : 'N/A'
             }</span></strong>
-              <span class="pill ${it.status_validacao === 'APROVADO' ? 'pill-optimal' : 'pill-critical'}">
-                <span class="pill-dot"></span>${it.status_validacao}
+              <span class="pill ${esc(it.status_validacao) === 'APROVADO' ? 'pill-optimal' : 'pill-critical'}">
+                <span class="pill-dot"></span>${esc(it.status_validacao)}
               </span>
             </div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${it.mensagem_seguranca}</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">${esc(it.mensagem_seguranca)}</div>
           </div>`
           )
           .join('')}
@@ -563,18 +564,18 @@ async function handleGerarRelatorioIA() {
 
     box.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-        <span class="pill ${pillClass}"><span class="pill-dot"></span>RISCO OPERACIONAL: ${data.nivel_risco_hospitalar}</span>
-        <span class="mono" style="font-size:11.5px;color:var(--text-muted);">${data.modelo_utilizado}</span>
+        <span class="pill ${pillClass}"><span class="pill-dot"></span>RISCO OPERACIONAL: ${esc(data.nivel_risco_hospitalar)}</span>
+        <span class="mono" style="font-size:11.5px;color:var(--text-muted);">${esc(data.modelo_utilizado)}</span>
       </div>
-      <p style="font-size:13px;margin-bottom:12px;color:var(--text-primary);"><strong>Diagnóstico da Farmácia Hospitalar:</strong><br/>${data.diagnostico_executivo}</p>
+      <p style="font-size:13px;margin-bottom:12px;color:var(--text-primary);"><strong>Diagnóstico da Farmácia Hospitalar:</strong><br/>${esc(data.diagnostico_executivo)}</p>
       <div style="margin-bottom:12px;">
         <strong style="font-size:12.5px;color:var(--text-primary);">Plano Prioritário de Ressuprimento:</strong>
         <ul style="margin-top:6px;padding-left:18px;font-size:12.5px;color:var(--text-secondary);">
-          ${data.recomendacoes_compras.map((r) => `<li style="margin-bottom:4px;">${r}</li>`).join('')}
+          ${data.recomendacoes_compras.map((r) => `<li style="margin-bottom:4px;">${esc(r)}</li>`).join('')}
         </ul>
       </div>
       <div style="font-size:12px;color:var(--clinical-blue);padding:10px 12px;background:var(--clinical-blue-soft);border:1px solid var(--clinical-blue-border);border-radius:6px;">
-        <strong>Auditoria Portaria 344/98 (ANVISA):</strong> ${data.analise_seguranca_anvisa}
+        <strong>Auditoria Portaria 344/98 (ANVISA):</strong> ${esc(data.analise_seguranca_anvisa)}
       </div>
     `;
     loadHistoricoIA();
@@ -594,17 +595,17 @@ async function loadHistoricoIA() {
       <tr>
         <td class="mono">#${h.id}</td>
         <td class="mono" style="font-size:12px;color:var(--text-secondary);">${formatDate(h.data_hora)}</td>
-        <td><span class="pill pill-neutral">${h.tipo_analise}</span></td>
-        <td style="max-width:280px;font-size:12.5px;">${h.entrada_usuario}</td>
-        <td style="max-width:300px;font-size:12.5px;color:var(--text-secondary);">${h.resposta_resumo}</td>
-        <td class="mono" style="font-size:11.5px;">${h.modelo_utilizado}</td>
+        <td><span class="pill pill-neutral">${esc(h.tipo_analise)}</span></td>
+        <td style="max-width:280px;font-size:12.5px;">${esc(h.entrada_usuario)}</td>
+        <td style="max-width:300px;font-size:12.5px;color:var(--text-secondary);">${esc(h.resposta_resumo)}</td>
+        <td class="mono" style="font-size:11.5px;">${esc(h.modelo_utilizado)}</td>
         <td>
           <span class="pill ${
             h.status_seguranca.includes('BLOQUEADO') || h.status_seguranca.includes('CRITICO')
               ? 'pill-critical'
               : 'pill-optimal'
           }">
-            <span class="pill-dot"></span>${h.status_seguranca}
+            <span class="pill-dot"></span>${esc(h.status_seguranca)}
           </span>
         </td>
       </tr>`

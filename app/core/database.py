@@ -10,7 +10,7 @@ engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args=connect_args
 )
 
-# Ativa integridade referencial de chaves estrangeiras no SQLite (Revisão do Banco CP2)
+# O SQLite só respeita chave estrangeira com este PRAGMA ligado em cada conexão
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
