@@ -1,0 +1,7 @@
+Saída do comando rodado pelo CloudShell via SSM na instância i-010e22ea03b4e36a1 (20/10/2026):
+cd /opt/vitalstock && git pull && docker compose up -d --build && docker compose ps && docker compose exec -T vitalstock-api pytest -q
+
+Success NAME                   IMAGE                       COMMAND                  SERVICE          CREATED          STATUS                    PORTS
+vitalstock-container   vitalstock-vitalstock-api   "uvicorn app.main:ap…"   vitalstock-api   17 seconds ago   Up 15 seconds (healthy)   0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+17 passed, 1 warning in 1.25s

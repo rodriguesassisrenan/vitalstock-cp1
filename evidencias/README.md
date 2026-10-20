@@ -11,4 +11,5 @@ Deploy na AWS em 20/10/2026, instância `i-010e22ea03b4e36a1` (t3.micro, us-east
 | `05_dashboard.png` | dashboard no deploy, com os dois itens em alerta |
 | `06_trava_dose.png` | saída de Fentanil com 0,5 mg bloqueada (máximo 0,1 mg) |
 | `07_ia_gemini.png` | relato cirúrgico lido pelo Gemini, aprovado nas travas, 2 baixas e registro no histórico |
+| `08_docker_e_testes.txt` | contêiner `(healthy)` na EC2 e os 17 testes rodando dentro dele |
 | `relatorio_pytest.txt` | `pytest -v` com os 17 testes passando |
