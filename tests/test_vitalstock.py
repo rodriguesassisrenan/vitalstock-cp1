@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
+from app.core.config import settings
 from app.core.database import Base, get_db
 
 TEST_DB_FILE = "./test_vitalstock.db"
@@ -26,12 +27,17 @@ def override_get_db():
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_test_database():
+    # os testes não podem depender de chave nem de rede: o Gemini real fica desligado
+    # (o CT-17 simula a resposta dele)
+    chave_original = settings.GEMINI_API_KEY
+    settings.GEMINI_API_KEY = ""
     if os.path.exists(TEST_DB_FILE):
         os.remove(TEST_DB_FILE)
     Base.metadata.create_all(bind=engine_test)
     app.dependency_overrides[get_db] = override_get_db
     yield
     app.dependency_overrides.clear()
+    settings.GEMINI_API_KEY = chave_original
     engine_test.dispose()
     if os.path.exists(TEST_DB_FILE):
         try:

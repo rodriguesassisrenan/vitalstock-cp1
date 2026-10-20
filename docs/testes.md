@@ -49,3 +49,4 @@ O CT-17 não chama o Gemini de verdade (o teste não pode depender de chave nem 
 | Qualquer pessoa podia trocar a chave do Gemini pela rota `/ia/configurar-chave` | revisão de segurança | rota removida; chave só por variável de ambiente (CT-16) |
 | Nome de produto com HTML era executado no dashboard (XSS) | teste manual com `<img src=x onerror=alert(1)>` | função `esc()` no `app.js` antes de montar o HTML |
 | `pytest -v` falhava com `No module named 'app'` fora do Windows | rodando em Linux | `pytest.ini` com `pythonpath = .` |
+| No servidor, com `GEMINI_API_KEY` configurada, o CT-11 falhava porque o teste chamava o Gemini real e a resposta variava | `pytest` rodando dentro do contêiner na EC2 | os testes desligam a chave real no início; a integração com o Gemini fica coberta pelo CT-17 com resposta simulada |
