@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 
 
-# ==================== CATEGORIA ====================
+# --- categoria
 class CategoriaBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=100, description="Nome único da categoria hospitalar")
     descricao: Optional[str] = Field(default=None, max_length=255)
@@ -24,7 +24,7 @@ class CategoriaUpdate(BaseModel):
     descricao: Optional[str] = Field(default=None, max_length=255)
 
 
-# ==================== FORNECEDOR (Normalização CP2) ====================
+# --- fornecedor
 class FornecedorBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=120)
     cnpj: Optional[str] = Field(default=None, max_length=20)
@@ -41,14 +41,14 @@ class Fornecedor(FornecedorBase):
     model_config = {"from_attributes": True}
 
 
-# ==================== PRODUTO ====================
+# --- produto
 class ProdutoBase(BaseModel):
     nome: str = Field(..., min_length=2, max_length=150)
     preco: float = Field(..., gt=0, description="Preço unitário do insumo em R$")
     categoria_id: int
     fornecedor_id: Optional[int] = None
-    lote: Optional[str] = "LOTE-2026A"
-    unidade_medida: str = "ampola"
+    lote: Optional[str] = Field(default="LOTE-2026A", max_length=50)
+    unidade_medida: str = Field(default="ampola", max_length=30)
     controlado: bool = False
     dose_maxima: Optional[float] = Field(default=None, gt=0, description="Dose máxima segura em mg")
     estoque_minimo_emergencia: int = Field(default=0, ge=0)
@@ -77,15 +77,15 @@ class ProdutoUpdate(BaseModel):
     estoque_minimo_emergencia: Optional[int] = Field(default=None, ge=0)
 
 
-# ==================== MOVIMENTACAO ====================
+# --- movimentacao
 class MovimentacaoBase(BaseModel):
     produto_id: int
     tipo: str = Field(..., pattern="^(entrada|saida)$")
     quantidade: int = Field(..., gt=0)
-    crm_medico: Optional[str] = None
+    crm_medico: Optional[str] = Field(default=None, max_length=40)
     dose_prescrita: Optional[float] = Field(default=None, gt=0)
-    nome_paciente: Optional[str] = None
-    observacao: Optional[str] = None
+    nome_paciente: Optional[str] = Field(default=None, max_length=120)
+    observacao: Optional[str] = Field(default=None, max_length=255)
 
 
 class MovimentacaoCreate(MovimentacaoBase):
@@ -99,7 +99,7 @@ class Movimentacao(MovimentacaoBase):
     model_config = {"from_attributes": True}
 
 
-# ==================== DASHBOARD ====================
+# --- dashboard
 class DashboardKPIs(BaseModel):
     total_produtos: int
     total_categorias: int
@@ -148,11 +148,12 @@ class DashboardResumo(BaseModel):
     ultimas_movimentacoes: List[MovimentacaoDetalhada]
 
 
-# ==================== INTELIGÊNCIA ARTIFICIAL (LLM) ====================
+# --- inteligência artificial
 class RelatoCirurgicoRequest(BaseModel):
     relato_texto: str = Field(
         ...,
         min_length=10,
+        max_length=4000,
         description="Relato em linguagem natural da equipe médica/enfermagem sobre os insumos utilizados no procedimento."
     )
     executar_baixa_automatica: bool = Field(
@@ -168,7 +169,7 @@ class ItemExtraidoIA(BaseModel):
     dose_prescrita_mg: Optional[float] = None
     controlado: bool = False
     dose_maxima_permitida_mg: Optional[float] = None
-    status_validacao: str  # 'APROVADO', 'BLOQUEADO_DOSE_LETAL', 'BLOQUEADO_SEM_CRM', 'BLOQUEADO_SEM_SALDO', 'NAO_ENCONTRADO'
+    status_validacao: str  # 'APROVADO', 'BLOQUEADO_DOSE_LETAL', 'BLOQUEADO_SEM_CRM', 'BLOQUEADO_SEM_SALDO', 'BLOQUEADO_SEM_DOSE'
     mensagem_seguranca: str
 
 

@@ -7,11 +7,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - PROJECT_NAME=VitalStock API - Gestão Hospitalar & IA
       - APP_ENV=production
       - DATABASE_URL=sqlite:///./data/estoque.db
       - AUTO_SEED=true
-      - CORS_ORIGINS=*
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     volumes:

@@ -20,11 +20,39 @@ def _normalizar_texto(texto: str) -> str:
 
 
 def _anonimizar_dados_sensiveis_lgpd(texto: str) -> str:
-    """
-    Proteção de dados sensíveis (LGPD):
-    Remove números de CPF que constem no relato antes de enviar para API externa ou salvar em log.
-    """
+    """Mascara CPF antes de o texto ir para o Gemini ou para o histórico."""
     return re.sub(r"\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b", "***.***.***-** (CPF PROTEGIDO LGPD)", texto)
+
+
+def _chamar_gemini(prompt: str, temperatura: float) -> Optional[dict]:
+    if not settings.GEMINI_API_KEY:
+        return None
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent"
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(
+                url,
+                # chave no header e não na URL, para não aparecer em log de proxy
+                headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+                json={
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": temperatura, "responseMimeType": "application/json"},
+                },
+            )
+        if resp.status_code != 200:
+            return None
+        texto = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        resultado = json.loads(texto)
+        return resultado if isinstance(resultado, dict) else None
+    except Exception:
+        return None
+
+
+def _numero(valor) -> Optional[float]:
+    try:
+        return float(str(valor).replace(",", "."))
+    except (TypeError, ValueError):
+        return None
 
 
 def _extrair_crm_e_paciente_regras(relato: str) -> Tuple[Optional[str], Optional[str]]:
@@ -106,53 +134,25 @@ def _extrair_itens_regras(relato: str, produtos_db: List[estoque_models.Produto]
 
 
 def _chamar_gemini_relato(relato_seguro: str, catalogo: List[dict]) -> Optional[dict]:
-    """
-    Chama a API oficial do Google Gemini (LLM) quando GEMINI_API_KEY está configurada.
-    """
-    if not settings.GEMINI_API_KEY:
-        return None
-
     prompt = f"""
-Você é o Assistente Farmacêutico do sistema hospitalar VitalStock.
-Analise o relato cirúrgico abaixo e extraia os medicamentos utilizados cruzando com o catálogo do hospital.
+Você é o assistente da farmácia hospitalar do sistema VitalStock.
+Leia o relato cirúrgico abaixo e liste os medicamentos usados, usando apenas itens do catálogo.
 
-CATÁLOGO DE PRODUTOS DO HOSPITAL (JSON):
+CATÁLOGO (JSON):
 {json.dumps(catalogo, ensure_ascii=False)}
 
-RELATO CIRÚRGICO:
+RELATO:
 "{relato_seguro}"
 
-Responda APENAS com um objeto JSON válido no seguinte formato:
+Responda só com JSON neste formato:
 {{
-  "paciente_identificado": "Nome do paciente ou null",
   "crm_identificado": "CRM do médico ou null",
-  "resumo_clinico_ia": "Explicação concisa do procedimento e validação",
   "itens": [
-    {{
-      "produto_id": 1,
-      "quantidade": 2,
-      "dose_prescrita_mg": 0.05
-    }}
+    {{"produto_id": 1, "quantidade": 2, "dose_prescrita_mg": 0.05}}
   ]
 }}
 """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
-    try:
-        with httpx.Client(timeout=15.0) as client:
-            resp = client.post(
-                url,
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"},
-                },
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                text_out = data["candidates"][0]["content"]["parts"][0]["text"]
-                return json.loads(text_out)
-    except Exception:
-        return None
-    return None
+    return _chamar_gemini(prompt, 0.1)
 
 
 def interpretar_relato_cirurgico(
@@ -173,24 +173,45 @@ def interpretar_relato_cirurgico(
         for p in produtos_db
     ]
 
-    resultado_llm = _chamar_gemini_relato(relato_seguro, catalogo)
-    if resultado_llm and "itens" in resultado_llm:
-        modelo_usado = f"Google Gemini API ({settings.GEMINI_MODEL})"
-        crm_identificado = resultado_llm.get("crm_identificado")
-        paciente_identificado = resultado_llm.get("paciente_identificado")
+    # o nome do paciente é identificado localmente e não vai para o Gemini
+    crm_regras, paciente_identificado = _extrair_crm_e_paciente_regras(relato_seguro)
+    relato_para_llm = relato_seguro
+    if paciente_identificado:
+        relato_para_llm = re.sub(re.escape(paciente_identificado), "[PACIENTE]", relato_seguro, flags=re.IGNORECASE)
+
+    resultado_llm = _chamar_gemini_relato(relato_para_llm, catalogo)
+    if resultado_llm and isinstance(resultado_llm.get("itens"), list):
+        modelo_usado = f"Google Gemini ({settings.GEMINI_MODEL})"
+        crm_identificado = resultado_llm.get("crm_identificado") or crm_regras
         itens_brutos = []
-        for it in resultado_llm.get("itens", []):
+        for it in resultado_llm["itens"]:
+            if not isinstance(it, dict):
+                continue
             prod_obj = mapa_produtos.get(it.get("produto_id"))
-            if prod_obj:
-                itens_brutos.append({
-                    "produto": prod_obj,
-                    "quantidade": int(it.get("quantidade", 1)),
-                    "dose_prescrita_mg": it.get("dose_prescrita_mg"),
-                })
+            qtd = _numero(it.get("quantidade", 1))
+            if not prod_obj or qtd is None or qtd < 1:
+                continue
+            itens_brutos.append({
+                "produto": prod_obj,
+                "quantidade": int(qtd),
+                "dose_prescrita_mg": _numero(it.get("dose_prescrita_mg")),
+            })
     else:
-        modelo_usado = "Extrator Local por Regras (Configure GEMINI_API_KEY para usar Google Gemini)"
-        crm_identificado, paciente_identificado = _extrair_crm_e_paciente_regras(relato_seguro)
+        modelo_usado = "Extrator local por regras (sem GEMINI_API_KEY)"
+        crm_identificado = crm_regras
         itens_brutos = _extrair_itens_regras(relato_seguro, produtos_db)
+
+    # o mesmo produto citado duas vezes vira um item só, para a checagem de saldo valer pelo total
+    agrupados = {}
+    for item in itens_brutos:
+        pid = item["produto"].id
+        if pid in agrupados:
+            agrupados[pid]["quantidade"] += item["quantidade"]
+            doses = [d for d in (agrupados[pid]["dose_prescrita_mg"], item["dose_prescrita_mg"]) if d is not None]
+            agrupados[pid]["dose_prescrita_mg"] = max(doses) if doses else None
+        else:
+            agrupados[pid] = dict(item)
+    itens_brutos = list(agrupados.values())
 
     itens_validados: List[estoque_schemas.ItemExtraidoIA] = []
     possui_bloqueio = False
@@ -201,29 +222,24 @@ def interpretar_relato_cirurgico(
         dose: Optional[float] = item["dose_prescrita_mg"]
 
         status_val = "APROVADO"
-        msg = f"Validação clínica OK. Saldo disponível ({prod.saldo_atual}) suficiente para baixa de {qtd} un."
+        msg = f"OK. Saldo atual {prod.saldo_atual}, baixa de {qtd} un."
 
         if prod.dose_maxima is not None and dose is not None and dose > prod.dose_maxima:
             status_val = "BLOQUEADO_DOSE_LETAL"
             possui_bloqueio = True
-            msg = (
-                f"ALERTA FATAL EVITADO: Dose extraída ({dose}mg) excede a dose máxima segura "
-                f"({prod.dose_maxima}mg) de {prod.nome}. Baixa bloqueada!"
-            )
+            msg = f"Dose de {dose} mg acima da máxima cadastrada ({prod.dose_maxima} mg) para {prod.nome}."
+        elif prod.dose_maxima is not None and dose is None:
+            status_val = "BLOQUEADO_SEM_DOSE"
+            possui_bloqueio = True
+            msg = f"O relato não informa a dose de {prod.nome}, que tem dose máxima cadastrada."
         elif prod.controlado and not crm_identificado:
             status_val = "BLOQUEADO_SEM_CRM"
             possui_bloqueio = True
-            msg = (
-                f"BLOQUEIO ANVISA (Portaria 344): {prod.nome} é controlado e nenhum CRM médico válido "
-                f"foi identificado no relato."
-            )
+            msg = f"{prod.nome} é controlado (Portaria 344/98) e o relato não traz CRM."
         elif qtd > prod.saldo_atual:
             status_val = "BLOQUEADO_SEM_SALDO"
             possui_bloqueio = True
-            msg = (
-                f"ESTOQUE INSUFICIENTE: Solicitado {qtd} un. de {prod.nome}, mas há apenas "
-                f"{prod.saldo_atual} un. no estoque."
-            )
+            msg = f"Pedido de {qtd} un. de {prod.nome}, mas o saldo é {prod.saldo_atual}."
 
         itens_validados.append(
             estoque_schemas.ItemExtraidoIA(
@@ -244,14 +260,14 @@ def interpretar_relato_cirurgico(
     if not itens_validados:
         status_geral = "REVISAO_NECESSARIA"
         resumo_ia = (
-            "Nenhum medicamento cadastrado no catálogo do VitalStock foi identificado no relato enviado. "
-            "Verifique a grafia dos insumos ou cadastre o item antes do procedimento."
+            "Nenhum item do catálogo foi encontrado no relato. "
+            "Confira a grafia ou cadastre o item antes."
         )
     elif possui_bloqueio:
         status_geral = "BLOQUEADO_PELA_TRAVA_HOSPITALAR"
         resumo_ia = (
-            "Foram identificados os insumos do relato cirúrgico, porém a operação foi BLOQUEADA "
-            "devido à violação das travas de segurança hospitalar (Dose Letal, falta de CRM ANVISA ou falta de saldo)."
+            "Itens encontrados, mas pelo menos um foi barrado por uma trava (dose, CRM ou saldo). "
+            "Nenhuma baixa foi feita."
         )
     else:
         status_geral = "APROVADO"
@@ -269,14 +285,11 @@ def interpretar_relato_cirurgico(
                 nova_mov = estoque_service.create_movimentacao(db, mov_schema)
                 baixas_realizadas += 1
                 mov_ids.append(nova_mov.id)
-            resumo_ia = (
-                f"Relato validado com sucesso! Todas as travas de segurança (ANVISA e Dose Segura) foram aprovadas. "
-                f"Foram executadas {baixas_realizadas} baixa(s) automática(s) no banco de dados."
-            )
+            resumo_ia = f"Todas as travas passaram. {baixas_realizadas} baixa(s) registrada(s) no estoque."
         else:
             resumo_ia = (
-                f"Simulação concluída: {len(itens_validados)} insumo(s) identificado(s) e aprovado(s) "
-                f"pelas travas de segurança. Marque a opção de baixa automática para efetivar no estoque."
+                f"{len(itens_validados)} item(ns) aprovado(s) nas travas. "
+                f"Nada foi baixado: marque a baixa automática para registrar."
             )
 
     auditoria = estoque_models.HistoricoIA(
@@ -330,40 +343,27 @@ def gerar_relatorio_inteligente_estoque(db: Session) -> estoque_schemas.Relatori
     else:
         nivel_risco = "BAIXO"
 
-    modelo_usado = "Cálculo Local de Ressuprimento (Configure GEMINI_API_KEY para usar Google Gemini)"
+    modelo_usado = "Cálculo local (sem GEMINI_API_KEY)"
     diagnostico = None
     recomendacoes: List[str] = []
     analise_anvisa = None
 
-    if settings.GEMINI_API_KEY:
-        prompt = f"""
-Você é um Diretor de Farmácia Hospitalar.
-Analise os indicadores reais do banco de dados do hospital abaixo e gere um parecer executivo em JSON:
+    prompt = f"""
+Você é farmacêutico responsável por um centro cirúrgico.
+Com os indicadores abaixo, escreva um parecer curto em JSON:
 {json.dumps(dados_contexto, ensure_ascii=False)}
 
-Retorne APENAS JSON válido com as chaves:
-- "diagnostico_executivo": string detalhada sobre o risco atual para o bloco cirúrgico
-- "recomendacoes_compras": lista de strings com quantidades recomendadas e custo estimado de reposição
-- "analise_seguranca_anvisa": string avaliando a governança dos medicamentos controlados (Portaria 344/98)
+Retorne só JSON com as chaves:
+- "diagnostico_executivo": texto sobre o risco de faltar insumo para cirurgias
+- "recomendacoes_compras": lista de textos com quantidade sugerida e custo estimado
+- "analise_seguranca_anvisa": texto sobre os medicamentos controlados (Portaria 344/98)
 """
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
-        try:
-            with httpx.Client(timeout=15.0) as client:
-                resp = client.post(
-                    url,
-                    json={
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
-                    },
-                )
-                if resp.status_code == 200:
-                    parsed = json.loads(resp.json()["candidates"][0]["content"]["parts"][0]["text"])
-                    diagnostico = parsed.get("diagnostico_executivo")
-                    recomendacoes = parsed.get("recomendacoes_compras", [])
-                    analise_anvisa = parsed.get("analise_seguranca_anvisa")
-                    modelo_usado = f"Google Gemini API ({settings.GEMINI_MODEL})"
-        except Exception:
-            pass
+    parsed = _chamar_gemini(prompt, 0.2)
+    if parsed and parsed.get("diagnostico_executivo"):
+        diagnostico = str(parsed.get("diagnostico_executivo"))
+        recomendacoes = [str(r) for r in parsed.get("recomendacoes_compras", []) if r]
+        analise_anvisa = str(parsed.get("analise_seguranca_anvisa") or "")
+        modelo_usado = f"Google Gemini ({settings.GEMINI_MODEL})"
 
     if not diagnostico:
         if alertas:
@@ -371,33 +371,25 @@ Retorne APENAS JSON válido com as chaves:
                 [f"{p.nome} (Saldo: {p.saldo_atual} / Mín: {p.estoque_minimo_emergencia})" for p in alertas]
             )
             diagnostico = (
-                f"O bloco cirúrgico opera em nível de risco {nivel_risco}. "
-                f"Identificamos {len(alertas)} insumo(s) abaixo da margem de segurança cirúrgica: {nomes_criticos}. "
-                f"Há risco de suspensão de procedimentos caso a reposição de emergência não ocorra."
+                f"Risco {nivel_risco}: {len(alertas)} insumo(s) no mínimo ou abaixo: {nomes_criticos}. "
+                f"Sem reposição, há chance de cirurgia ser suspensa."
             )
             for p in alertas:
                 qtd_repor = max(10, (p.estoque_minimo_emergencia * 2) - p.saldo_atual)
                 custo_est = round(qtd_repor * p.preco, 2)
-                recomendacoes.append(
-                    f"Repor {qtd_repor} un. de {p.nome} para recompor margem de segurança "
-                    f"(Custo estimado: R$ {custo_est:.2f})."
-                )
+                recomendacoes.append(f"Repor {qtd_repor} un. de {p.nome} (custo estimado R$ {custo_est:.2f}).")
         else:
-            diagnostico = (
-                "Operação hospitalar estável. Todos os insumos cirúrgicos encontram-se acima "
-                "do estoque mínimo de emergência."
-            )
-            recomendacoes.append("Manter cronograma regular de compras; nenhuma compra emergencial necessária.")
+            diagnostico = "Risco BAIXO: todos os insumos estão acima do estoque mínimo."
+            recomendacoes.append("Nenhuma compra emergencial; manter o ciclo normal de compras.")
 
         analise_anvisa = (
-            f"O hospital possui {kpis.produtos_controlados} medicamento(s) sob regime da Portaria 344/98 (ANVISA) "
-            f"monitorados com trava ativa de CRM e limite de dosagem letal. Todas as {kpis.total_saidas} saída(s) "
-            f"registradas possuem rastreabilidade de paciente e prescritor."
+            f"{kpis.produtos_controlados} medicamento(s) controlado(s) pela Portaria 344/98. "
+            f"Saídas desses itens só são aceitas com CRM informado."
         )
 
     auditoria = estoque_models.HistoricoIA(
         tipo_analise="relatorio_estoque",
-        entrada_usuario="Solicitação de Diagnóstico de Estoque e Risco Cirúrgico",
+        entrada_usuario="Parecer de estoque solicitado pelo usuário",
         resposta_resumo=diagnostico,
         modelo_utilizado=modelo_usado,
         status_seguranca=f"RISCO_{nivel_risco}",

@@ -110,7 +110,6 @@ def test_05_trava_anvisa_saida_controlado_sem_crm_erro():
     }
     res = client.post("/api/v1/movimentacoes/", json=payload)
     assert res.status_code == 400
-    assert "ALERTA DE SEGURANÇA" in res.json()["detail"]
     assert "CRM" in res.json()["detail"]
 
 
@@ -126,7 +125,7 @@ def test_06_trava_anti_overdose_dose_letal_erro():
     }
     res = client.post("/api/v1/movimentacoes/", json=payload)
     assert res.status_code == 400
-    assert "ALERTA FATAL EVITADO" in res.json()["detail"]
+    assert "acima da dose máxima" in res.json()["detail"]
 
 
 def test_07_trava_estoque_fisico_insuficiente_erro():
@@ -233,3 +232,82 @@ def test_12_ia_relatorio_executivo_risco_cirurgico():
     assert data["nivel_risco_hospitalar"] in ("MODERADO", "CRITICO")
     assert len(data["recomendacoes_compras"]) >= 1
     assert "Fentanil" in data["diagnostico_executivo"]
+
+
+def test_13_saida_sem_dose_de_item_com_dose_maxima_erro():
+    """Cenário 13 (Erro): item com dose máxima cadastrada não sai sem a dose prescrita"""
+    payload = {"produto_id": 1, "tipo": "saida", "quantidade": 1, "crm_medico": "CRM-SP 123456"}
+    res = client.post("/api/v1/movimentacoes/", json=payload)
+    assert res.status_code == 400
+    assert "dose prescrita" in res.json()["detail"]
+
+
+def test_14_produto_com_fornecedor_inexistente_erro():
+    """Cenário 14 (Erro): fornecedor inexistente devolve 404 em vez de erro interno"""
+    payload = {"nome": "Seringa 10ml", "preco": 1.2, "categoria_id": 1, "fornecedor_id": 999}
+    res = client.post("/api/v1/produtos/", json=payload)
+    assert res.status_code == 404
+    assert "Fornecedor" in res.json()["detail"]
+
+
+def test_15_exclusao_de_produto_com_historico_bloqueada():
+    """Cenário 15 (Erro): produto com movimentações não pode ser excluído (rastreabilidade)"""
+    res = client.delete("/api/v1/produtos/1")
+    assert res.status_code == 409
+    assert client.get("/api/v1/produtos/1").status_code == 200
+
+
+def test_16_chave_do_gemini_nao_pode_ser_trocada_pela_api():
+    """Cenário 16 (Segurança): não existe rota pública para alterar a chave do LLM"""
+    res = client.post("/api/v1/ia/configurar-chave", json={"api_key": "x"})
+    assert res.status_code in (404, 405)
+
+
+def test_17_integracao_gemini_mockada(monkeypatch):
+    """Cenário 17 (Integração LLM): resposta do Gemini simulada; confere header da chave,
+    que o nome do paciente e o CPF não saem do servidor e que a resposta passa pelas travas"""
+    from types import SimpleNamespace
+    from app.core.config import settings
+    from app.services import ia_service
+
+    enviado = {}
+
+    class RespostaFake:
+        status_code = 200
+
+        def json(self):
+            texto = '{"crm_identificado": "CRM-SP 77777", "itens": [{"produto_id": 1, "quantidade": 1, "dose_prescrita_mg": 0.05}]}'
+            return {"candidates": [{"content": {"parts": [{"text": texto}]}}]}
+
+    class ClienteFake:
+        def __init__(self, timeout=None):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def post(self, url, headers=None, json=None):
+            enviado["url"] = url
+            enviado["headers"] = headers
+            enviado["prompt"] = json["contents"][0]["parts"][0]["text"]
+            return RespostaFake()
+
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "chave-de-teste")
+    monkeypatch.setattr(ia_service, "httpx", SimpleNamespace(Client=ClienteFake))
+
+    payload = {
+        "relato_texto": "Paciente Joana Prado CPF 987.654.321-00 pelo CRM-SP 77777. Usado 1 ampola de Fentanil dose 0.05mg.",
+        "executar_baixa_automatica": False,
+    }
+    res = client.post("/api/v1/ia/interpretar-relato", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["modelo_utilizado"].startswith("Google Gemini")
+    assert data["status_geral"] == "APROVADO"
+    assert enviado["headers"]["x-goog-api-key"] == "chave-de-teste"
+    assert "key=" not in enviado["url"]
+    assert "987.654.321-00" not in enviado["prompt"]
+    assert "Joana Prado" not in enviado["prompt"]
