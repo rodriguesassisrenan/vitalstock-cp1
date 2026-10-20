@@ -1,0 +1,45 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.15, pytest-9.1.1, pluggy-1.7.0 -- C:\Users\Renan\AppData\Local\Programs\Python\Python313\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Renan\Documents\Projeto_Estoque
+plugins: anyio-4.15.1
+collecting ... collected 12 items
+
+tests/test_vitalstock.py::test_01_healthcheck_e_frontend PASSED          [  8%]
+tests/test_vitalstock.py::test_02_criar_e_listar_categoria_sucesso PASSED [ 16%]
+tests/test_vitalstock.py::test_03_bloqueio_categoria_duplicada_erro PASSED [ 25%]
+tests/test_vitalstock.py::test_04_criar_medicamento_controlado_com_saldo_inicial PASSED [ 33%]
+tests/test_vitalstock.py::test_05_trava_anvisa_saida_controlado_sem_crm_erro PASSED [ 41%]
+tests/test_vitalstock.py::test_06_trava_anti_overdose_dose_letal_erro PASSED [ 50%]
+tests/test_vitalstock.py::test_07_trava_estoque_fisico_insuficiente_erro PASSED [ 58%]
+tests/test_vitalstock.py::test_08_saida_valida_e_gatilho_alerta_emergencia PASSED [ 66%]
+tests/test_vitalstock.py::test_09_otimizacao_filtros_e_dashboard_consolidado PASSED [ 75%]
+tests/test_vitalstock.py::test_10_ia_interpretar_relato_cirurgico_aprovado_com_baixa PASSED [ 83%]
+tests/test_vitalstock.py::test_11_ia_bloqueia_relato_com_overdose_e_anonimiza_cpf_lgpd PASSED [ 91%]
+tests/test_vitalstock.py::test_12_ia_relatorio_executivo_risco_cirurgico PASSED [100%]
+
+============================== warnings summary ===============================
+..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\Renan\AppData\Local\Programs\Python\Python313\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\testclient.py:53
+  C:\Users\Renan\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================================== PASSES ====================================
+=========================== short test summary info ===========================
+PASSED tests/test_vitalstock.py::test_01_healthcheck_e_frontend
+PASSED tests/test_vitalstock.py::test_02_criar_e_listar_categoria_sucesso
+PASSED tests/test_vitalstock.py::test_03_bloqueio_categoria_duplicada_erro
+PASSED tests/test_vitalstock.py::test_04_criar_medicamento_controlado_com_saldo_inicial
+PASSED tests/test_vitalstock.py::test_05_trava_anvisa_saida_controlado_sem_crm_erro
+PASSED tests/test_vitalstock.py::test_06_trava_anti_overdose_dose_letal_erro
+PASSED tests/test_vitalstock.py::test_07_trava_estoque_fisico_insuficiente_erro
+PASSED tests/test_vitalstock.py::test_08_saida_valida_e_gatilho_alerta_emergencia
+PASSED tests/test_vitalstock.py::test_09_otimizacao_filtros_e_dashboard_consolidado
+PASSED tests/test_vitalstock.py::test_10_ia_interpretar_relato_cirurgico_aprovado_com_baixa
+PASSED tests/test_vitalstock.py::test_11_ia_bloqueia_relato_com_overdose_e_anonimiza_cpf_lgpd
+PASSED tests/test_vitalstock.py::test_12_ia_relatorio_executivo_risco_cirurgico
+======================= 12 passed, 2 warnings in 0.71s ========================
