@@ -1,0 +1,33 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.16, pytest-9.1.1, pluggy-1.7.0 -- venv/bin/python3
+rootdir: /home/user/vitalstock-cp1
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 17 items
+
+tests/test_vitalstock.py::test_01_healthcheck_e_frontend PASSED          [  5%]
+tests/test_vitalstock.py::test_02_criar_e_listar_categoria_sucesso PASSED [ 11%]
+tests/test_vitalstock.py::test_03_bloqueio_categoria_duplicada_erro PASSED [ 17%]
+tests/test_vitalstock.py::test_04_criar_medicamento_controlado_com_saldo_inicial PASSED [ 23%]
+tests/test_vitalstock.py::test_05_trava_anvisa_saida_controlado_sem_crm_erro PASSED [ 29%]
+tests/test_vitalstock.py::test_06_trava_anti_overdose_dose_letal_erro PASSED [ 35%]
+tests/test_vitalstock.py::test_07_trava_estoque_fisico_insuficiente_erro PASSED [ 41%]
+tests/test_vitalstock.py::test_08_saida_valida_e_gatilho_alerta_emergencia PASSED [ 47%]
+tests/test_vitalstock.py::test_09_otimizacao_filtros_e_dashboard_consolidado PASSED [ 52%]
+tests/test_vitalstock.py::test_10_ia_interpretar_relato_cirurgico_aprovado_com_baixa PASSED [ 58%]
+tests/test_vitalstock.py::test_11_ia_bloqueia_relato_com_overdose_e_anonimiza_cpf_lgpd PASSED [ 64%]
+tests/test_vitalstock.py::test_12_ia_relatorio_executivo_risco_cirurgico PASSED [ 70%]
+tests/test_vitalstock.py::test_13_saida_sem_dose_de_item_com_dose_maxima_erro PASSED [ 76%]
+tests/test_vitalstock.py::test_14_produto_com_fornecedor_inexistente_erro PASSED [ 82%]
+tests/test_vitalstock.py::test_15_exclusao_de_produto_com_historico_bloqueada PASSED [ 88%]
+tests/test_vitalstock.py::test_16_chave_do_gemini_nao_pode_ser_trocada_pela_api PASSED [ 94%]
+tests/test_vitalstock.py::test_17_integracao_gemini_mockada PASSED       [100%]
+
+=============================== warnings summary ===============================
+../../..venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 17 passed, 1 warning in 1.01s =========================

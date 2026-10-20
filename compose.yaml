@@ -1,0 +1,26 @@
+services:
+  vitalstock-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vitalstock-container
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - DATABASE_URL=sqlite:///./data/estoque.db
+      - AUTO_SEED=true
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - vitalstock_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  vitalstock_data:
